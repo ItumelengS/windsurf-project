@@ -1,8 +1,15 @@
 import { neon } from '@neondatabase/serverless';
 
 export default async (req: Request) => {
+  if (!process.env.DATABASE_URL) {
+    return new Response(JSON.stringify({ error: 'DATABASE_URL not configured' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
   try {
-    const sql = neon(process.env.DATABASE_URL!);
+    const sql = neon(process.env.DATABASE_URL);
 
     // Create rooms table
     await sql`
