@@ -4,84 +4,78 @@ import { RoomDetails } from './components/RoomDetails';
 import { EquipmentDetails } from './components/EquipmentDetails';
 import { CreateRoom } from './components/CreateRoom';
 import { RoomList } from './components/RoomList';
-import { mockRooms } from './data/mockData';
+import { api } from './services/api';
 import { Scan, AlertCircle, Plus, List } from 'lucide-react';
 import type { Room, Equipment } from './types';
 
 function App() {
-  const [rooms, setRooms] = useState<Room[]>(mockRooms);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [showScanner, setShowScanner] = useState(false);
   const [showCreateRoom, setShowCreateRoom] = useState(false);
   const [showRoomList, setShowRoomList] = useState(false);
   const [scannedRoom, setScannedRoom] = useState<Room | null>(null);
   const [scannedEquipment, setScannedEquipment] = useState<Equipment | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Save to localStorage whenever rooms change
+  // Load rooms from database on mount
   useEffect(() => {
-    localStorage.setItem('rooms', JSON.stringify(rooms));
-  }, [rooms]);
-
-  // Load from localStorage on mount
-  useEffect(() => {
-    const savedRooms = localStorage.getItem('rooms');
-    if (savedRooms) {
-      try {
-        const parsed = JSON.parse(savedRooms);
-        if (parsed.length > 0) {
-          setRooms(parsed);
-        }
-      } catch (e) {
-        console.error('Failed to load saved rooms:', e);
-      }
-    }
+    loadRooms();
   }, []);
 
-  const findByBarcode = (barcode: string): { type: 'room' | 'equipment'; data: Room | Equipment } | null => {
-    const room = rooms.find(r => r.barcode === barcode);
-    if (room) {
-      return { type: 'room', data: room };
+  const loadRooms = async () => {
+    try {
+      setLoading(true);
+      const data = await api.getRooms();
+      setRooms(data);
+    } catch (error) {
+      console.error('Failed to load rooms:', error);
+      setError('Failed to load rooms from database');
+    } finally {
+      setLoading(false);
     }
-
-    // Search in all equipment from all rooms
-    for (const room of rooms) {
-      const equipment = room.equipment.find(e => e.barcode === barcode);
-      if (equipment) {
-        return { type: 'equipment', data: equipment };
-      }
-    }
-
-    return null;
   };
 
-  const handleScan = (barcode: string) => {
-    const result = findByBarcode(barcode);
-    
-    if (result) {
-      setError(null);
-      if (result.type === 'room') {
-        setScannedRoom(result.data as Room);
-        setScannedEquipment(null);
-        setShowRoomList(false);
+
+  const handleScan = async (barcode: string) => {
+    try {
+      const result = await api.scanBarcode(barcode);
+      
+      if (result) {
+        setError(null);
+        if (result.type === 'room') {
+          setScannedRoom(result.data as Room);
+          setScannedEquipment(null);
+          setShowRoomList(false);
+        } else {
+          setScannedEquipment(result.data as Equipment);
+          setScannedRoom(null);
+          setShowRoomList(false);
+        }
+        setShowScanner(false);
       } else {
-        setScannedEquipment(result.data as Equipment);
+        setError(`No room or equipment found with barcode: ${barcode}`);
         setScannedRoom(null);
-        setShowRoomList(false);
+        setScannedEquipment(null);
+        setShowScanner(false);
       }
-      setShowScanner(false);
-    } else {
-      setError(`No room or equipment found with barcode: ${barcode}`);
-      setScannedRoom(null);
-      setScannedEquipment(null);
+    } catch (error) {
+      setError('Failed to scan barcode. Please try again.');
       setShowScanner(false);
     }
   };
 
-  const handleSaveRoom = (newRoom: Room) => {
-    setRooms([...rooms, newRoom]);
-    setShowCreateRoom(false);
-    setError(null);
-    alert(`Room "${newRoom.name}" created successfully!`);
+  const handleSaveRoom = async (newRoom: Room) => {
+    try {
+      await api.createRoom(newRoom);
+      await loadRooms(); // Reload rooms from database
+      setShowCreateRoom(false);
+      setError(null);
+      alert(`Room "${newRoom.name}" created successfully!`);
+    } catch (error) {
+      setError('Failed to create room. Please try again.');
+      console.error('Failed to create room:', error);
+    }
   };
 
   const handleViewRoom = (room: Room) => {
@@ -109,14 +103,22 @@ function App() {
           </p>
         </header>
 
-        <div className="flex flex-wrap justify-center gap-4 mb-8">
-          <button
-            onClick={() => setShowScanner(true)}
-            className="flex items-center gap-3 bg-blue-600 text-white py-3 px-8 rounded-lg hover:bg-blue-700 transition-colors shadow-lg hover:shadow-xl text-lg font-semibold"
-          >
-            <Scan className="w-6 h-6" />
-            Scan Barcode
-          </button>
+        {loading && (
+          <div className="text-center py-8">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <p className="mt-4 text-gray-600">Loading rooms from database...</p>
+          </div>
+        )}
+
+        {!loading && (
+          <div className="flex flex-wrap justify-center gap-4 mb-8">
+            <button
+              onClick={() => setShowScanner(true)}
+              className="flex items-center gap-3 bg-blue-600 text-white py-3 px-8 rounded-lg hover:bg-blue-700 transition-colors shadow-lg hover:shadow-xl text-lg font-semibold"
+            >
+              <Scan className="w-6 h-6" />
+              Scan Barcode
+            </button>
           <button
             onClick={() => {
               setShowCreateRoom(true);
@@ -139,6 +141,7 @@ function App() {
             View All Rooms
           </button>
         </div>
+        )}
 
         {error && (
           <div className="max-w-2xl mx-auto mb-6 bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
