@@ -1,11 +1,12 @@
 import type { Room } from '../types';
-import { MapPin, Package } from 'lucide-react';
+import { MapPin, Package, Edit } from 'lucide-react';
 
 interface RoomDetailsProps {
   room: Room;
+  onEdit?: () => void;
 }
 
-export const RoomDetails = ({ room }: RoomDetailsProps) => {
+export const RoomDetails = ({ room, onEdit }: RoomDetailsProps) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'available':
@@ -22,7 +23,18 @@ export const RoomDetails = ({ room }: RoomDetailsProps) => {
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 max-w-4xl mx-auto">
       <div className="border-b pb-4 mb-4">
-        <h2 className="text-3xl font-bold text-gray-800 mb-2">{room.name}</h2>
+        <div className="flex justify-between items-start mb-2">
+          <h2 className="text-3xl font-bold text-gray-800">{room.name}</h2>
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Edit className="w-4 h-4" />
+              Edit Room
+            </button>
+          )}
+        </div>
         <div className="flex items-center text-gray-600">
           <MapPin className="w-5 h-5 mr-2" />
           <span>{room.location}</span>

@@ -61,6 +61,39 @@ export default async (req: Request) => {
       });
     }
 
+    // PUT update existing room
+    if (method === 'PUT') {
+      const body = await req.json();
+      const { id, name, barcode, location, equipment } = body;
+
+      // Update room
+      await sql`
+        UPDATE rooms 
+        SET name = ${name}, barcode = ${barcode}, location = ${location}
+        WHERE id = ${id}
+      `;
+
+      // Delete existing equipment for this room
+      await sql`
+        DELETE FROM equipment WHERE room_id = ${id}
+      `;
+
+      // Insert updated equipment
+      if (equipment && equipment.length > 0) {
+        for (const item of equipment) {
+          await sql`
+            INSERT INTO equipment (id, room_id, name, barcode, category, status)
+            VALUES (${item.id}, ${id}, ${item.name}, ${item.barcode}, ${item.category}, ${item.status})
+          `;
+        }
+      }
+
+      return new Response(JSON.stringify({ success: true, id }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     return new Response('Method not allowed', { status: 405 });
   } catch (error) {
     return new Response(JSON.stringify({ error: String(error) }), {

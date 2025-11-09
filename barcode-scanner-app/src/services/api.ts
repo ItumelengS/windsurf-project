@@ -27,6 +27,17 @@ export const api = {
     return response.json();
   },
 
+  // Update an existing room
+  async updateRoom(room: Room): Promise<{ success: boolean; id: string }> {
+    const response = await fetch(`${API_BASE}/rooms`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(room)
+    });
+    if (!response.ok) throw new Error('Failed to update room');
+    return response.json();
+  },
+
   // Scan barcode (room or equipment)
   async scanBarcode(barcode: string): Promise<{ type: 'room' | 'equipment'; data: Room | Equipment } | null> {
     const response = await fetch(`${API_BASE}/scan?barcode=${encodeURIComponent(barcode)}`);

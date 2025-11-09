@@ -3,6 +3,7 @@ import { BarcodeScanner } from './components/BarcodeScanner';
 import { RoomDetails } from './components/RoomDetails';
 import { EquipmentDetails } from './components/EquipmentDetails';
 import { CreateRoom } from './components/CreateRoom';
+import { EditRoom } from './components/EditRoom';
 import { RoomList } from './components/RoomList';
 import { api } from './services/api';
 import { Scan, AlertCircle, Plus, List } from 'lucide-react';
@@ -12,6 +13,7 @@ function App() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [showScanner, setShowScanner] = useState(false);
   const [showCreateRoom, setShowCreateRoom] = useState(false);
+  const [showEditRoom, setShowEditRoom] = useState(false);
   const [showRoomList, setShowRoomList] = useState(false);
   const [scannedRoom, setScannedRoom] = useState<Room | null>(null);
   const [scannedEquipment, setScannedEquipment] = useState<Equipment | null>(null);
@@ -76,6 +78,24 @@ function App() {
       setError('Failed to create room. Please try again.');
       console.error('Failed to create room:', error);
     }
+  };
+
+  const handleUpdateRoom = async (updatedRoom: Room) => {
+    try {
+      await api.updateRoom(updatedRoom);
+      await loadRooms(); // Reload rooms from database
+      setShowEditRoom(false);
+      setScannedRoom(updatedRoom); // Update the displayed room
+      setError(null);
+      alert(`Room "${updatedRoom.name}" updated successfully!`);
+    } catch (error) {
+      setError('Failed to update room. Please try again.');
+      console.error('Failed to update room:', error);
+    }
+  };
+
+  const handleEditRoom = () => {
+    setShowEditRoom(true);
   };
 
   const handleViewRoom = (room: Room) => {
@@ -157,7 +177,7 @@ function App() {
 
         {scannedRoom && (
           <div className="mb-6">
-            <RoomDetails room={scannedRoom} />
+            <RoomDetails room={scannedRoom} onEdit={handleEditRoom} />
             <div className="flex justify-center mt-4">
               <button
                 onClick={handleReset}
@@ -238,6 +258,14 @@ function App() {
           <CreateRoom
             onSave={handleSaveRoom}
             onClose={() => setShowCreateRoom(false)}
+          />
+        )}
+
+        {showEditRoom && scannedRoom && (
+          <EditRoom
+            room={scannedRoom}
+            onSave={handleUpdateRoom}
+            onClose={() => setShowEditRoom(false)}
           />
         )}
       </div>
