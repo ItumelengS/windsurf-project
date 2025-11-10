@@ -58,18 +58,35 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      setScanMode(null);
+      return;
+    }
 
     try {
-      const scanner = new Html5Qrcode('reader');
+      setScanMode('upload');
+      
+      // Create a new scanner instance for file scanning
+      const scanner = new Html5Qrcode('file-reader');
       scannerRef.current = scanner;
 
       const result = await scanner.scanFile(file, true);
       onScan(result);
       setScanMode(null);
+      
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     } catch (err) {
       console.error('Error scanning file:', err);
-      alert('Failed to scan barcode from image. Please try another image.');
+      alert('Failed to scan barcode from image. Please ensure the image contains a clear barcode or QR code.');
+      setScanMode(null);
+      
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
@@ -97,10 +114,7 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
               <span className="text-lg font-medium">Scan with Camera</span>
             </button>
             <button
-              onClick={() => {
-                setScanMode('upload');
-                fileInputRef.current?.click();
-              }}
+              onClick={() => fileInputRef.current?.click()}
               className="w-full flex items-center justify-center gap-3 bg-green-600 text-white py-4 px-6 rounded-lg hover:bg-green-700 transition-colors"
             >
               <Upload className="w-6 h-6" />
@@ -124,9 +138,15 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
               Stop Scanning
             </button>
           </div>
-        ) : (
-          <div id="reader" className="hidden"></div>
-        )}
+        ) : scanMode === 'upload' ? (
+          <div className="space-y-4">
+            <div id="file-reader" className="hidden"></div>
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <p className="mt-4 text-gray-600">Scanning image...</p>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
