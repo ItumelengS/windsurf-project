@@ -99,17 +99,38 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
       const scanner = new Html5Qrcode('file-reader');
       scannerRef.current = scanner;
 
-      const result = await scanner.scanFile(file, true);
-      onScan(result);
-      setScanMode(null);
+      // Try scanning with show image enabled for better detection
+      const result = await scanner.scanFile(file, false);
+      
+      if (result) {
+        onScan(result);
+        setScanMode(null);
+      } else {
+        throw new Error('No barcode detected');
+      }
       
       // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error scanning file:', err);
-      alert('Failed to scan barcode from image. Please ensure the image contains a clear barcode or QR code.');
+      
+      // More helpful error messages
+      let errorMessage = 'Failed to scan barcode from image.\n\n';
+      
+      if (err.message?.includes('No barcode') || err.message?.includes('NotFoundException')) {
+        errorMessage += 'Tips:\n' +
+          '• Ensure the barcode/QR code is clearly visible\n' +
+          '• Try taking a photo with better lighting\n' +
+          '• Make sure the barcode is not blurry or damaged\n' +
+          '• The barcode should fill most of the image\n' +
+          '• Supported formats: QR Code, EAN, UPC, Code 128, Code 39';
+      } else {
+        errorMessage += 'Please try again with a different image.';
+      }
+      
+      alert(errorMessage);
       setScanMode(null);
       
       // Reset file input
@@ -146,7 +167,7 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
 
         {!scanMode ? (
           <div className="space-y-4">
-            <p className="text-gray-600 mb-6">Choose a scanning method:</p>
+            <p className="text-gray-600 mb-4">Choose a scanning method:</p>
             <button
               onClick={startCameraScanning}
               className="w-full flex items-center justify-center gap-3 bg-blue-600 text-white py-4 px-6 rounded-lg hover:bg-blue-700 transition-colors"
@@ -168,6 +189,14 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
               onChange={handleFileUpload}
               className="hidden"
             />
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-xs text-blue-800 font-semibold mb-1">📸 Tips for better scanning:</p>
+              <ul className="text-xs text-blue-700 space-y-1">
+                <li>• Ensure good lighting and clear focus</li>
+                <li>• Barcode should fill most of the image</li>
+                <li>• Supports: QR Code, EAN, UPC, Code 128, Code 39</li>
+              </ul>
+            </div>
           </div>
         ) : scanMode === 'camera' ? (
           <div className="space-y-4">
