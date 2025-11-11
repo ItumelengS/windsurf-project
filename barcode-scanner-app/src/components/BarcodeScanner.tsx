@@ -33,16 +33,25 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
       // Stop the test stream immediately
       stream.getTracks().forEach(track => track.stop());
       
+      // Set camera mode BEFORE starting scanner so the div is visible
+      setScanMode('camera');
+      
+      // Small delay to ensure DOM is updated
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // Now start the scanner
       const scanner = new Html5Qrcode('reader');
       scannerRef.current = scanner;
 
+      const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0
+      };
+
       await scanner.start(
         { facingMode: 'environment' },
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 }
-        },
+        config,
         (decodedText) => {
           onScan(decodedText);
           stopScanning();
@@ -52,8 +61,6 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
           console.log(errorMessage);
         }
       );
-
-      setScanMode('camera');
     } catch (err: any) {
       console.error('Error starting camera:', err);
       
@@ -113,17 +120,29 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold text-gray-800">Scan Barcode</h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
+    <>
+      <style>{`
+        #reader video {
+          width: 100% !important;
+          height: auto !important;
+          border-radius: 8px;
+        }
+        #reader {
+          border-radius: 8px;
+          overflow: hidden;
+        }
+      `}</style>
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold text-gray-800">Scan Barcode</h2>
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
 
         {!scanMode ? (
           <div className="space-y-4">
@@ -152,7 +171,7 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
           </div>
         ) : scanMode === 'camera' ? (
           <div className="space-y-4">
-            <div id="reader" className="w-full"></div>
+            <div id="reader" className="w-full min-h-[400px]"></div>
             <button
               onClick={stopScanning}
               className="w-full bg-red-600 text-white py-3 px-6 rounded-lg hover:bg-red-700 transition-colors"
@@ -180,5 +199,6 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
         ) : null}
       </div>
     </div>
+    </>
   );
 };
