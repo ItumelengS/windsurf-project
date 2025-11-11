@@ -8,7 +8,7 @@ interface BarcodeScannerProps {
 }
 
 export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
-  const [scanMode, setScanMode] = useState<'camera' | 'upload' | null>(null);
+  const [scanMode, setScanMode] = useState<'camera' | 'upload' | 'requesting' | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -23,6 +23,17 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
 
   const startCameraScanning = async () => {
     try {
+      setScanMode('requesting');
+      
+      // First, explicitly request camera permission
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      });
+      
+      // Stop the test stream immediately
+      stream.getTracks().forEach(track => track.stop());
+      
+      // Now start the scanner
       const scanner = new Html5Qrcode('reader');
       scannerRef.current = scanner;
 
@@ -43,9 +54,20 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
       );
 
       setScanMode('camera');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error starting camera:', err);
-      alert('Failed to start camera. Please check permissions.');
+      
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        alert('Camera access denied. Please allow camera permissions in your browser settings and try again.');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        alert('No camera found on this device.');
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        alert('Camera is already in use by another application.');
+      } else {
+        alert('Failed to start camera. Please check your camera permissions and try again.');
+      }
+      
+      setScanMode(null);
     }
   };
 
@@ -137,6 +159,15 @@ export const BarcodeScanner = ({ onScan, onClose }: BarcodeScannerProps) => {
             >
               Stop Scanning
             </button>
+          </div>
+        ) : scanMode === 'requesting' ? (
+          <div className="space-y-4">
+            <div id="reader" className="hidden"></div>
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <p className="mt-4 text-gray-600">Requesting camera permission...</p>
+              <p className="mt-2 text-sm text-gray-500">Please allow camera access when prompted</p>
+            </div>
           </div>
         ) : scanMode === 'upload' ? (
           <div className="space-y-4">
